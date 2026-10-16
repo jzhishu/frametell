@@ -22,9 +22,10 @@ import elevenlabs from '../assets/providers/elevenlabs.svg?raw';
 const COLOR: Record<string, string> = {
   anthropic: claude, google: gemini, deepseek, zhipu, qwen, 'minimax-cn': minimax, siliconflow,
   'volcengine-ark': doubao, hunyuan, volcengine,
+  'claude-cli': claude, 'qwen-cli': qwen,
 };
 // drawn inline: one-colour marks, and Kimi, whose letter is drawn in the text colour beside its blue dot
-const MONO: Record<string, string> = { 'moonshotai-cn': kimi, openai, xai: grok, openrouter, xiaomi, ollama, elevenlabs };
+const MONO: Record<string, string> = { 'moonshotai-cn': kimi, openai, xai: grok, openrouter, xiaomi, ollama, elevenlabs, 'codex-cli': openai, 'kimi-cli': kimi, 'grok-cli': grok };
 
 export function ProviderLogo({ id, name, size = 20, className = '' }: { id: string; name?: string; size?: number; className?: string }) {
   const box = `inline-flex shrink-0 items-center justify-center ${className}`;

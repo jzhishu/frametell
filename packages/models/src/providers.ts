@@ -4,7 +4,7 @@
 // and model ids the user adds by hand on top of the ones the provider lists.
 import type { CustomProviderConfig } from './custom.js';
 
-export type ProviderGroup = 'recommended' | 'global' | 'china' | 'local';
+export type ProviderGroup = 'recommended' | 'global' | 'china' | 'local' | 'cli';
 
 export interface ProviderSpec {
   id: string;
@@ -24,8 +24,18 @@ export interface ProviderSpec {
   envKeys?: string[];
   /** env vars overriding this provider's base URL (a relay or gateway), in the order they win */
   envBaseUrl?: string[];
-  /** the protocol of the endpoint: decides what a custom base URL looks like (Anthropic: no /v1) */
-  protocol: 'openai' | 'anthropic' | 'google';
+  /** a command already signed in on this computer: no key, no base URL; filled in when Studio lists providers */
+  cli?: boolean;
+  /** the command Studio runs, when `cli` */
+  command?: string;
+  /** the executable's full path, when the command is installed */
+  bin?: string;
+  /** the installed CLI's version, when probed */
+  version?: string;
+  /** the CLI's sign-in state: 'needed' means installed but not signed in */
+  auth?: 'ok' | 'needed' | 'unknown';
+  /** the protocol of the endpoint: decides what a custom base URL looks like (Anthropic: no /v1); 'cli' runs a command instead */
+  protocol: 'openai' | 'anthropic' | 'google' | 'cli';
   /** the endpoint, shown as the default when the user leaves the base URL empty */
   baseUrl: string;
   /** an OpenAI-compatible endpoint Studio registers (not built into Pi); its models are listed from GET /models */
