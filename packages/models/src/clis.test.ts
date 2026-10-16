@@ -35,7 +35,7 @@ test('the search dirs cover the install locations a packaged app does not inheri
   assert.ok(dirs.some((d) => d.includes('pnpm')));
 });
 
-test('CLI model rows: default first, typed-in ids marked added', () => {
+test('CLI model rows: default first, typed-in ids marked added, a live list wins over the static one', () => {
   const def = CLI_DEFS[0];
   const rows = cliModels([{ def, bin: '/bin/x', auth: 'ok' }], { [def.id]: ['my-model'] });
   assert.equal(rows[0].provider, def.id);
@@ -43,4 +43,15 @@ test('CLI model rows: default first, typed-in ids marked added', () => {
   const mine = rows.find((r) => r.id === 'my-model');
   assert.ok(mine?.added);
   assert.equal(cliModelInfo(def).vision, def.vision);
+  const live = cliModels([{ def, bin: '/bin/x', auth: 'ok', models: ['live-1'] }]);
+  assert.deepEqual(live.map((r) => r.id), ['default', 'live-1']);
+});
+
+test("pi's model table parses to provider/id rows, cursor's list strips spinner noise", () => {
+  const pi = CLI_DEFS.find((d) => d.command === 'pi')!;
+  const table = 'provider     model            context  max-out  thinking  images\nkimi-coding  k3               1.0M     131.1K   yes       yes\nkimi-coding  kimi-for-coding  1.0M     32.8K    yes       yes\n';
+  assert.deepEqual(pi.listModels!.parse(table), ['kimi-coding/k3', 'kimi-coding/kimi-for-coding']);
+  const cursor = CLI_DEFS.find((d) => d.command === 'cursor-agent')!;
+  assert.deepEqual(cursor.listModels!.parse('\x1b[2K\x1b[GLoading models…\n\x1b[2K\x1b[1A\x1b[2K\x1b[GNo models available for this account.\n'), []);
+  assert.deepEqual(cursor.listModels!.parse('gpt-5\nsonnet-4\n'), ['gpt-5', 'sonnet-4']);
 });

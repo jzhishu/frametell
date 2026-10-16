@@ -32,8 +32,10 @@ export interface CliDef {
   authFailPatterns?: RegExp[];
   /** any of these set in the environment also counts as signed in (an API-key login instead of a subscription) */
   authEnvKeys?: string[];
+  /** a command that lists the account's models (pi --list-models, cursor-agent --list-models); parse keeps the ids */
+  listModels?: { args: string[]; timeoutMs?: number; parse: (stdout: string) => string[] };
   stream: CliStream;
-  /** the model ids to list; `default` means the CLI's own choice, any other id is passed through as --model */
+  /** the model ids to list when the CLI cannot list them itself; `default` means the CLI's own choice, any other id is passed through as --model */
   models: string[];
   vision: boolean;
 }
@@ -83,6 +85,14 @@ export const CLI_DEFS: CliDef[] = [
     id: 'pi-cli', name: 'Pi', command: 'pi', site: 'https://github.com/earendil-works/pi',
     blurb: 'The Pi CLI already signed in on this computer',
     versionArgs: ['--version'],
+    listModels: {
+      args: ['--list-models'], timeoutMs: 8000,
+      // a fixed-width table: provider, model id, sizes; --model takes "provider/id"
+      parse: (out) => out.split('\n')
+        .map((l) => l.trim().split(/\s+/))
+        .filter((cols) => cols.length >= 2 && /^[a-z0-9][a-z0-9-]*$/.test(cols[0]) && /^[a-z0-9][\w.-]*$/.test(cols[1]) && cols[0] !== 'provider')
+        .map((cols) => `${cols[0]}/${cols[1]}`),
+    },
     stream: 'plain',
     models: ['default'],
     vision: true,
@@ -102,6 +112,11 @@ export const CLI_DEFS: CliDef[] = [
     versionArgs: ['--version'],
     authProbe: { args: ['status'], timeoutMs: 5000 },
     authFailPatterns: [/not logged in/i, /unauthorized/i, /login required/i],
+    listModels: {
+      args: ['--list-models'], timeoutMs: 8000,
+      // the list is a plain line per model, with spinner noise and ANSI erasures around it
+      parse: (out) => out.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '').split('\n').map((l) => l.trim()).filter((l) => l && !/loading|no models/i.test(l)),
+    },
     stream: 'plain',
     models: ['default'],
     vision: true,
@@ -172,6 +187,8 @@ export interface DetectedCli {
   version?: string;
   /** ok: the probe (or an env key) says signed in; needed: it says sign in first; unknown: no way to tell */
   auth: CliAuth;
+  /** the account's live model list when the CLI can list it; absent = the def's static list applies */
+  models?: string[];
 }
 
 async function probeCli(def: CliDef): Promise<DetectedCli | undefined> {
@@ -192,7 +209,15 @@ async function probeCli(def: CliDef): Promise<DetectedCli | undefined> {
       auth = def.authFailPatterns?.some((p) => p.test(r.out)) ? 'needed' : r.code === 0 ? 'ok' : 'unknown';
     } catch { auth = 'unknown'; }
   }
-  return { def, bin, version, auth };
+  let models: string[] | undefined;
+  if (def.listModels && auth !== 'needed') {
+    try {
+      const r = await run(bin, def.listModels.args, def.listModels.timeoutMs ?? 8000);
+      const listed = def.listModels.parse(r.out);
+      if (listed.length) models = listed;
+    } catch { /* a CLI that cannot list its models keeps the static ones */ }
+  }
+  return { def, bin, version, auth, models };
 }
 
 /**
@@ -214,12 +239,14 @@ export function cliModelInfo(def: CliDef, id = 'default', added = false): ModelI
   };
 }
 
-/** model rows for the CLIs installed here, plus ids the user typed in for each */
+/** model rows for the CLIs installed here: the account's live list when the CLI listed one, plus ids the user typed in */
 export function cliModels(found: DetectedCli[], extra: Record<string, string[]> = {}): ModelInfo[] {
   const out: ModelInfo[] = [];
-  for (const { def } of found) {
-    for (const id of def.models) out.push(cliModelInfo(def, id));
-    for (const id of extra[def.id] || []) if (!def.models.includes(id)) out.push(cliModelInfo(def, id, true));
+  for (const { def, models } of found) {
+    // the CLI's own default stays first even when a live list names concrete models
+    const listed = [...new Set(['default', ...(models ?? def.models.filter((m) => m !== 'default'))])];
+    for (const id of listed) out.push(cliModelInfo(def, id));
+    for (const id of extra[def.id] || []) if (!listed.includes(id)) out.push(cliModelInfo(def, id, true));
   }
   return out;
 }
