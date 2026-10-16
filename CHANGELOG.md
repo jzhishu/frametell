@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - An exported film opens on a cover instead of a blank stage. Its first frame is a page at rest (the moment its thumbnail is cut), so a chat app or a file browser that shows a video by its first frame shows a picture; one frame of it is not seen when the film plays. It is the first page unless another is chosen: "Cover" beside the workbench's export button lists the film's pages to pick from (`Studio.setCover(id, page)`, saved as `cover.json` in the project, a `cover` event). Choosing another cover marks an mp4 already made out of date, and the next export draws only the film's first segment again.
 
+- Providers connect themselves when the machine already knows their key. A variable a user exports — `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `ARK_API_KEY` and each provider's other conventional names, or a `FRAMETELL_…` override — is picked up the moment Studio opens: the provider shows connected in Settings with the variable's name (never the value), and its models can be listed and used right away. `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL` and `DEEPSEEK_BASE_URL` point a provider at a relay. An environment variable wins over a key saved in Settings; the saved key applies again when the variable is unset. The packaged app asks the login shell once at startup, so keys exported in `~/.zshrc` reach it too.
+
 ### Fixed
 
 - A film a hosted service stops because the account ran out of credits now says so (`paused` with `reason: 'credits'`, from `Studio.stop(id, 'credits')`), with a button to top up beside Continue and the out-of-credits notice at the top of the workbench until the balance is topped up. It used to read as if the user had paused it.

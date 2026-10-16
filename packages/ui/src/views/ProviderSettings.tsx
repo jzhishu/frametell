@@ -22,7 +22,7 @@ export interface ProviderView {
 /** a provider's name and one line about it in the interface language (the spec's Chinese name is the fallback) */
 export const providerName = (p: Pick<ProviderView, 'id' | 'name' | 'group'>) => { const k = `providers.name.${p.id}`; const n = t(k as MessageKey); return p.group === 'custom' || n === k ? p.name : n; };
 const blurb = (p: ProviderView) => (p.group === 'custom' ? p.baseUrl : t(`providers.blurb.${p.id}` as MessageKey));
-export const connected = (s: PublicSettings, p: Pick<ProviderView, 'id'>) => !!s.keys[p.id];
+export const connected = (s: PublicSettings, p: Pick<ProviderView, 'id'>) => !!s.keys[p.id] || s.keySources?.[p.id]?.source === 'env';
 
 export function ProviderList({ providers, s, open, onOpen, onAddCustom }: { providers: ProviderView[]; s: PublicSettings; open?: string; onOpen: (id: string) => void; onAddCustom: () => void }) {
   const inUse = s.defaults.model?.split('/')[0];
@@ -166,6 +166,12 @@ export function ProviderDetail({ p, s, models, loading, patch, onClose, onRemove
             </div>
           ) : (
             <KeyInput id={p.id} label={t('providers.key')} saved={s.keys[p.id]} hint={p.keyHint} onSave={(v) => patch({ keys: { [p.id]: v } })} />
+          )}
+          {s.keySources?.[p.id]?.source === 'env' && (
+            <p className="-mt-1 text-[12.5px] leading-relaxed text-jade">
+              {t('providers.envKey', { name: s.keySources[p.id].envName || '' })}
+              <span className="text-ink-3">{t('providers.envKeyHint')}</span>
+            </p>
           )}
           {p.keyUrl && <a href={p.keyUrl} target="_blank" rel="noreferrer" className="-mt-1 inline-flex items-center gap-1 text-[12.5px] text-accent-ink hover:underline">{t('providers.getKey', { name: providerName(p) })}<ArrowUpRight size={13} aria-hidden /></a>}
           {p.group !== 'custom' && <UrlInput id={p.id} saved={s.baseUrls?.[p.id] ?? ''} placeholder={p.baseUrl} onSave={(v) => patch({ baseUrls: { [p.id]: v } })} />}

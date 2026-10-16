@@ -102,6 +102,8 @@ export interface NewProjectInput {
 /** settings as clients see them: keys are masked hints, never the secrets */
 export interface PublicSettings {
   keys: Record<string, string>;
+  /** per provider: where its effective key comes from; env keys are never shown, only the variable's name */
+  keySources: Record<string, { source: 'env' | 'stored' | 'unset'; envName?: string }>;
   custom: CustomProviderConfig[];
   /** the user's relay per provider (not secret) */
   baseUrls: Record<string, string>;

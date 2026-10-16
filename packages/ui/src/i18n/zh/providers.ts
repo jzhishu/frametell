@@ -20,6 +20,8 @@ export default {
   close: '关闭',
   key: 'API Key',
   keySaved: '已保存 {key}',
+  envKey: (v: { name: string }) => `已从环境变量 ${v.name} 读取 `,
+  envKeyHint: '——环境变量优先于这里保存的 key，变量取消后回落到保存的 key。',
   save: '保存',
   saved: '已保存',
   remove: '移除',

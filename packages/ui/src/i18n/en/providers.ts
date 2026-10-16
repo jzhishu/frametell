@@ -21,6 +21,8 @@ const en: typeof zh = {
   close: 'Close',
   key: 'API key',
   keySaved: 'Saved {key}',
+  envKey: (v) => `Read from the environment variable ${v.name} `,
+  envKeyHint: '— it wins over a key saved here; unset it and the saved key applies again.',
   save: 'Save',
   saved: 'Saved',
   remove: 'Remove',

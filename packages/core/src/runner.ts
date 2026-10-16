@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { createProject, linkProject } from '@frametell/engine/tools/project.mjs';
-import { createCatalog } from '@frametell/models';
+import { createCatalog, resolveCredentials } from '@frametell/models';
 import { elevenLabsTts, volcengineTts } from '@frametell/voice';
 import { createWeb, Director, findSources, hasSources, offlineWeb, openProjectFile, piRuntime, Project, readFd, writeIn, type AgentRuntime, type DirectorOptions, type Renderer, type StudioEvent, type Storyboard, type UserRef } from '@frametell/agent';
 import type { Config, ConfigStore } from './config.js';
@@ -133,7 +133,8 @@ async function buildRuntime(meta: ProjectMeta, cfg: Config, research?: boolean):
   // research runs on the cheaper model: the one set for it, else the pages', else the director's
   const researchRef = research ? cfg.defaults.researchModel || meta.pageModel || meta.model : undefined;
   const only = [meta.model, meta.pageModel, meta.reviewModel, researchRef].filter((m): m is string => !!m).map((m) => m.split('/')[0]);
-  const catalog = await createCatalog({ keys: Object.entries(cfg.keys).map(([providerId, apiKey]) => ({ providerId, apiKey })), custom: cfg.custom, baseUrls: cfg.baseUrls, models: cfg.models, only });
+  const cred = resolveCredentials(cfg);
+  const catalog = await createCatalog({ keys: cred.keys, custom: cfg.custom, baseUrls: cred.baseUrls, models: cfg.models, only });
   const one = (ref: string) => {
     const [provider, ...rest] = ref.split('/');
     const model = catalog.get(provider, rest.join('/'));

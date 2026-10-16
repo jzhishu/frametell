@@ -2,7 +2,7 @@
 // IPC in the desktop app) only translate calls and stream events, so behaviour is identical everywhere.
 import fs from 'node:fs';
 import path from 'node:path';
-import { createCatalog, PROVIDERS, type ProviderSpec } from '@frametell/models';
+import { createCatalog, PROVIDERS, resolveCredentials, type ProviderSpec } from '@frametell/models';
 import { bundledSample, ELEVENLABS_DEFAULT_VOICES, ElevenLabsError, elevenLabsTts, listElevenLabsVoices, volcengineTts, VoiceNotFound, VOLCENGINE_VOICES } from '@frametell/voice';
 import { BRAND_DIR, Project, STYLES, cleanBrand, cleanLook, openProjectFile, writeIn, type OpenFile, type Renderer, type Timeline } from '@frametell/agent';
 import { linkProject } from '@frametell/engine/tools/project.mjs';
@@ -110,7 +110,8 @@ export class Studio {
 
   async models(): Promise<{ models: ModelInfo[]; default?: ModelInfo }> {
     const cfg = this.config.load();
-    const catalog = await createCatalog({ keys: Object.entries(cfg.keys).map(([providerId, apiKey]) => ({ providerId, apiKey })), custom: cfg.custom, baseUrls: cfg.baseUrls, models: cfg.models });
+    const cred = resolveCredentials(cfg);
+    const catalog = await createCatalog({ keys: cred.keys, custom: cfg.custom, baseUrls: cred.baseUrls, models: cfg.models });
     return { models: await catalog.available(), default: await catalog.defaultModel() };
   }
 
