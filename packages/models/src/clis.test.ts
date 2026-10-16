@@ -55,3 +55,14 @@ test("pi's model table parses to provider/id rows, cursor's list strips spinner 
   assert.deepEqual(cursor.listModels!.parse('\x1b[2K\x1b[GLoading models…\n\x1b[2K\x1b[1A\x1b[2K\x1b[GNo models available for this account.\n'), []);
   assert.deepEqual(cursor.listModels!.parse('gpt-5\nsonnet-4\n'), ['gpt-5', 'sonnet-4']);
 });
+
+test("the CLI's own config names its models: kimi's and codex's TOML, qwen's settings.json", () => {
+  const kimi = CLI_DEFS.find((d) => d.command === 'kimi')!;
+  const toml = 'default_model = "kimi-code/k3"\n[models."kimi-code/kimi-for-coding"]\nmodel = "kimi-for-coding"\n';
+  assert.deepEqual(kimi.configModels!.parse(toml), ['kimi-code/k3', 'kimi-code/kimi-for-coding']);
+  const codex = CLI_DEFS.find((d) => d.command === 'codex')!;
+  assert.deepEqual(codex.configModels!.parse('model = "gpt-5.6-luna"\nmodel_reasoning_effort = "max"\n'), ['gpt-5.6-luna']);
+  const qwen = CLI_DEFS.find((d) => d.command === 'qwen')!;
+  assert.deepEqual(qwen.configModels!.parse('{"model":"qwen3-coder-plus","modelProviders":{"openai":[{"id":"my-1"},{"id":"my-2"}]}}'), ['qwen3-coder-plus', 'my-1', 'my-2']);
+  assert.deepEqual(qwen.configModels!.parse('not json'), []);
+});

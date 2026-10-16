@@ -34,6 +34,8 @@ export interface CliDef {
   authEnvKeys?: string[];
   /** a command that lists the account's models (pi --list-models, cursor-agent --list-models); parse keeps the ids */
   listModels?: { args: string[]; timeoutMs?: number; parse: (stdout: string) => string[] };
+  /** the CLI's own config file (home-relative) names the models the user set up; parse keeps the ids */
+  configModels?: { file: string; parse: (content: string) => string[] };
   stream: CliStream;
   /** the model ids to list when the CLI cannot list them itself; `default` means the CLI's own choice, any other id is passed through as --model */
   models: string[];
@@ -59,6 +61,11 @@ export const CLI_DEFS: CliDef[] = [
     authProbe: { args: ['login', 'status'], timeoutMs: 5000 },
     authFailPatterns: [/not logged in/i, /unauthorized/i],
     authEnvKeys: ['OPENAI_API_KEY'],
+    // codex has no list-models on every build; the config names the model the user picked
+    configModels: {
+      file: '.codex/config.toml',
+      parse: (content) => [...content.matchAll(/^\s*model\s*=\s*"([^"]+)"/gm)].map((m) => m[1]),
+    },
     stream: 'codex-jsonl',
     models: ['default'],
     vision: true,
@@ -68,6 +75,14 @@ export const CLI_DEFS: CliDef[] = [
     blurb: 'The Kimi CLI already signed in on this computer',
     versionArgs: ['--version'],
     authEnvKeys: ['MOONSHOT_API_KEY'],
+    // kimi keeps its aliases in config.toml: default_model plus one [models."…"] section each
+    configModels: {
+      file: '.kimi-code/config.toml',
+      parse: (content) => [
+        ...[...content.matchAll(/^\s*default_model\s*=\s*"([^"]+)"/gm)].map((m) => m[1]),
+        ...[...content.matchAll(/^\s*\[models\."([^"]+)"\]/gm)].map((m) => m[1]),
+      ],
+    },
     stream: 'plain',
     models: ['default'],
     vision: true,
@@ -77,6 +92,17 @@ export const CLI_DEFS: CliDef[] = [
     blurb: 'The Qwen Code CLI already signed in on this computer',
     versionArgs: ['--version'],
     authEnvKeys: ['DASHSCOPE_API_KEY', 'OPENAI_API_KEY'],
+    // qwen has no --list-models; its settings.json names every provider entry the user configured
+    configModels: {
+      file: '.qwen/settings.json',
+      parse: (content) => {
+        try {
+          const s = JSON.parse(content) as { modelProviders?: Record<string, { id?: string }[]>; model?: string };
+          const ids = Object.values(s.modelProviders || {}).flat().map((e) => e?.id).filter((x): x is string => !!x);
+          return [...(typeof s.model === 'string' && s.model.trim() ? [s.model.trim()] : []), ...ids];
+        } catch { return []; }
+      },
+    },
     stream: 'plain',
     models: ['default'],
     vision: true,
@@ -216,6 +242,12 @@ async function probeCli(def: CliDef): Promise<DetectedCli | undefined> {
       const listed = def.listModels.parse(r.out);
       if (listed.length) models = listed;
     } catch { /* a CLI that cannot list its models keeps the static ones */ }
+  }
+  if (def.configModels) {
+    try {
+      const fromConfig = def.configModels.parse(fs.readFileSync(path.join(os.homedir(), def.configModels.file), 'utf8'));
+      if (fromConfig.length) models = [...new Set([...(models ?? []), ...fromConfig])];
+    } catch { /* no config, or one that does not parse */ }
   }
   return { def, bin, version, auth, models };
 }
